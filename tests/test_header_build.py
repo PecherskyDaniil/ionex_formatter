@@ -1,7 +1,11 @@
 import pytest
 import hashlib
 from . import conftest
-from ionex_formatter.formatter import IonexFile
+from ionex_formatter.formatter import (
+    IonexFile,
+    HeaderDuplicatedLine,
+    NumericTokenTooBig
+)
 from ionex_formatter.spatial import SpatialRange
 from datetime import datetime
 
@@ -17,6 +21,7 @@ comment = [
     "TEC values in  0.1 TECUs; 9999 if no value available        ",
     "IGS GPS stations used in the computations:                  "
 ]
+commentstr="TEC value in 0.1"
 
 sites = [
     "019b", "ab02", "ab06", "ab09", "ab11", "ab12", "ab13", "ab25", "ab27", "ab33",
@@ -66,6 +71,29 @@ class TestIonexHeaderBuild():
         md5_test = (hashlib.md5("".join(sample_header).encode())).hexdigest()
         assert md5_test == md5_control
 
+    def test_update(self):
+        formatter = IonexFile()
+        formatter.set_version_type_gnss(version=1.0, map_type="I", gnss_type='GPS')
+        formatter.header_format._update()
+        expected  = ["     1.0            I                   GPS                 IONEX VERSION / TYPE"]
+        assert formatter.header["IONEX VERSION / TYPE"] == expected
+
+    def test_line_tokens(self):
+        formatter = IonexFile()
+        formatter.header_format.line_tokens("END OF FILE")
+        assert "1"=="1"
+
+
+    def test_file_not_exist(self):
+        formatter = IonexFile()
+        with pytest.raises(FileNotFoundError):
+            formatter.header_format.load_descriptions("filenotexist.txt")
+
+    def test_file_wrong_type(self):
+        formatter = IonexFile()
+        with pytest.raises(TypeError):
+            formatter.header_format.load_descriptions("existing_file.json")
+
     def test_version_set(self):
         formatter = IonexFile()
         formatter.set_version_type_gnss(version=1.0, map_type="I", gnss_type='GPS')
@@ -87,6 +115,12 @@ class TestIonexHeaderBuild():
             "IGS GPS stations used in the computation" 
             "s:                  COMMENT             "
         ]
+        assert formatter.header["COMMENT"] == expected
+
+    def test_comment_str(self):
+        formatter = IonexFile()
+        formatter.add_comment(commentstr)
+        expected  = ['TEC value in 0.1                                            COMMENT             ']
         assert formatter.header["COMMENT"] == expected
 
     def test_description(self):
@@ -130,8 +164,7 @@ class TestIonexHeaderBuild():
             "                    END OF HEADER       "
         ]
         assert formatter.header["END OF HEADER"] == expected
-    
-    def test_header_build(self, sample_header):
+    def test_duplicate_error(self, sample_header):
         _sample_header = []
         for line in sample_header:
             if line.endswith("\n"):
@@ -159,6 +192,75 @@ class TestIonexHeaderBuild():
         formatter.update_label("MAP DIMENSION", [2, ])
         formatter.set_spatial_grid(
             lat_range=SpatialRange(87.5, -87.5, -2.5), 
+            lon_range=SpatialRange(-180, 180, 5),
+            height_range=SpatialRange(450, 450, 0)
+        )
+        with pytest.raises(HeaderDuplicatedLine):
+             formatter.set_spatial_grid(
+                 lat_range=SpatialRange(87.5, -87.5, -2.5), 
+                 lon_range=SpatialRange(-180, 180, 5),
+                 height_range=SpatialRange(450, 450, 0)
+             )
+    def test_numeric_token_big(self, sample_header):
+        _sample_header = []
+        for line in sample_header:
+            if line.endswith("\n"):
+                _sample_header.append(line[:-1])
+            else:
+                _sample_header.append(line[:])
+        formatter = IonexFile()
+        formatter.set_version_type_gnss(version=1.0, map_type="I", gnss_type='GPS')
+        formatter.update_label(
+            "PGM / RUN BY / DATE",
+            ["tecrms2ionex_4.awk", "UPC-IonSAT", "11/14/18  411UT"]
+        )
+        formatter.set_description(description)
+        formatter.set_epoch_range(
+            start=datetime(2010, 12, 28, 0, 0, 0),
+            last=datetime(2010, 12, 28, 23, 59, 24)
+        )
+        formatter.update_label("INTERVAL", [900, ])
+        formatter.update_label("# OF MAPS IN FILE", [97, ])
+        formatter.update_label("MAPPING FUNCTION", ["COSZ", ])
+        formatter.update_label("ELEVATION CUTOFF", [0, ])
+        formatter.update_label("# OF STATIONS", [300, ])
+        formatter.update_label("# OF SATELLITES", [32, ])
+        formatter.update_label("BASE RADIUS", [6371.0, ])
+        formatter.update_label("MAP DIMENSION", [2, ])
+        with pytest.raises(NumericTokenTooBig):
+             formatter.set_spatial_grid(
+                 lat_range=SpatialRange(89.44444250000001, -89.44444250000001, -2.5555555,14), 
+                 lon_range=SpatialRange(-180, 180, 5),
+                 height_range=SpatialRange(450, 450, 0)
+             )
+    def test_header_build(self, sample_header):
+        _sample_header = []
+        for line in sample_header:
+            if line.endswith("\n"):
+                _sample_header.append(line[:-1])
+            else:
+                _sample_header.append(line[:])
+        formatter = IonexFile()
+        formatter.set_version_type_gnss(version=1.0, map_type="I", gnss_type='GPS')
+        formatter.update_label(
+            "PGM / RUN BY / DATE",
+            ["tecrms2ionex_4.awk", "UPC-IonSAT", "11/14/18  411UT"]
+        )
+        formatter.set_description(description)
+        formatter.set_epoch_range(
+            start=datetime(2010, 12, 28, 0, 0, 0),
+            last=datetime(2010, 12, 28, 23, 59, 24)
+        )
+        formatter.update_label("INTERVAL", [900, ])
+        formatter.update_label("# OF MAPS IN FILE", [97, ])
+        formatter.update_label("MAPPING FUNCTION", ["COSZ", ])
+        formatter.update_label("ELEVATION CUTOFF", [0, ])
+        formatter.update_label("# OF STATIONS", [300, ])
+        formatter.update_label("# OF SATELLITES", [32, ])
+        formatter.update_label("BASE RADIUS", [6371.0, ])
+        formatter.update_label("MAP DIMENSION", [2, ])
+        formatter.set_spatial_grid(
+            lat_range=SpatialRange(float(f"{87.5:.{3}f}"), -87.5, -2.5), 
             lon_range=SpatialRange(-180, 180, 5),
             height_range=SpatialRange(450, 450, 0)
         )

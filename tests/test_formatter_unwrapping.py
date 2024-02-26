@@ -1,7 +1,8 @@
 import pytest
 from ionex_formatter.formatter import (
     IonexFile,
-    UnknownFormatSpecifier
+    UnknownFormatSpecifier,
+    UnknownFormatingError
 )
 
 class TestFormatterUnwrappingFields():
@@ -9,6 +10,9 @@ class TestFormatterUnwrappingFields():
     @pytest.fixture
     def header_formatter(self):
         return IonexFile()
+
+    def test_unknown_formating_error(self):
+        assert UnknownFormatingError("hello")
 
     def test_unwrap_format_spec_with_repeat(self, header_formatter):
         format_spec = "2X, 3F6.1, I3, 10A2, 17X"
