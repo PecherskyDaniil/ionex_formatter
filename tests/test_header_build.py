@@ -201,6 +201,11 @@ class TestIonexHeaderBuild():
                  lon_range=SpatialRange(-180, 180, 5),
                  height_range=SpatialRange(450, 450, 0)
              )
+    def test_add_zeros(self):
+        formatter=IonexFile()
+        ans=formatter._get_header_numeric_token(8,4,0)
+        assert ans=="8.00"
+
     def test_numeric_token_big(self, sample_header):
         _sample_header = []
         for line in sample_header:

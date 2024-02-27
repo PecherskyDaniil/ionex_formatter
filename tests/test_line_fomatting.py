@@ -77,3 +77,12 @@ class TestLineFormating():
         format_spec = "Z3J, G6.1, O2.2"
         with pytest.raises(UnknownFormatSpecifier):
              formatter.format_header_line(data, format_spec)
+
+    def test_format_line_invalid_verify(self, formatter):
+        data = "1"
+        formatted_data="a"
+        width=1
+        fmt="U"
+        precision=1
+        with pytest.raises(UnknownFormatSpecifier):
+             formatter._verify_formatted(data,fmt,formatted_data,width,precision)
