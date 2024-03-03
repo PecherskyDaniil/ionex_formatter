@@ -78,6 +78,12 @@ class TestLineFormating():
         with pytest.raises(UnknownFormatSpecifier):
              formatter.format_header_line(data, format_spec)
 
+    def test_format_line_ivalid_other(self, formatter):
+        data = [1, 2, '3']
+        format_spec = "X3, 2X, F7.3, 3X, A2, 1A"
+        with pytest.raises(UnknownFormatSpecifier):
+            formatter.format_header_line(data, format_spec)
+
     def test_format_line_invalid_verify(self, formatter):
         data = "1"
         formatted_data="a"
